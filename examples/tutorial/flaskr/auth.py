@@ -38,10 +38,13 @@ def load_logged_in_user():
     if user_id is None:
         g.user = None
     else:
-        g.user = (
-            get_db().execute("SELECT * FROM user WHERE id = ?", (user_id,)).fetchone()
-        )
-
+        cur = get_db().cursor(buffered=True)
+        cur.execute("SELECT * FROM user WHERE id = %s", (user_id,))
+        resp = cur.fetchone()
+        keys = ['id', 'username', 'password']
+        g.user = {}
+        for k, v in zip(keys, resp):
+            g.user[k] = v
 
 @bp.route("/register", methods=("GET", "POST"))
 def register():
@@ -53,27 +56,28 @@ def register():
     if request.method == "POST":
         username = request.form["username"]
         password = request.form["password"]
-        db = get_db()
+        cnx = get_db()
+        cur = cnx.cursor(buffered=True)
         error = None
 
         if not username:
             error = "Username is required."
         elif not password:
             error = "Password is required."
-        elif (
-            db.execute("SELECT id FROM user WHERE username = ?", (username,)).fetchone()
-            is not None
-        ):
+        else:
+            cur.execute("SELECT id FROM user WHERE username = %s", (username,))
+
+        if cur.fetchone() is not None:
             error = "User {0} is already registered.".format(username)
 
         if error is None:
             # the name is available, store it in the database and go to
             # the login page
-            db.execute(
-                "INSERT INTO user (username, password) VALUES (?, ?)",
+            cur.execute(
+                "INSERT INTO user (username, password) VALUES (%s, %s)",
                 (username, generate_password_hash(password)),
             )
-            db.commit()
+            cnx.commit()
             return redirect(url_for("auth.login"))
 
         flash(error)
@@ -87,16 +91,22 @@ def login():
     if request.method == "POST":
         username = request.form["username"]
         password = request.form["password"]
-        db = get_db()
+        cur = get_db().cursor(buffered=True)
         error = None
-        user = db.execute(
-            "SELECT * FROM user WHERE username = ?", (username,)
-        ).fetchone()
-
-        if user is None:
+        cur.execute(
+            "SELECT * FROM user WHERE username = %s", (username,)
+        )
+        resp = cur.fetchone()
+        if resp is None:
             error = "Incorrect username."
-        elif not check_password_hash(user["password"], password):
-            error = "Incorrect password."
+        else:
+            keys = ['id', 'username', 'password']
+            user = {}
+            for k, v in zip(keys, resp):
+                user[k] = v
+
+            if not check_password_hash(user["password"], password):
+                error = "Incorrect password."
 
         if error is None:
             # store the user id in a new session and return to the index

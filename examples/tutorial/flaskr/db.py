@@ -1,5 +1,6 @@
-import sqlite3
+import re
 
+import mysql.connector as mysql
 import click
 from flask import current_app
 from flask import g
@@ -12,10 +13,12 @@ def get_db():
     again.
     """
     if "db" not in g:
-        g.db = sqlite3.connect(
-            current_app.config["DATABASE"], detect_types=sqlite3.PARSE_DECLTYPES
-        )
-        g.db.row_factory = sqlite3.Row
+        g.db =  mysql.connect(host='localhost',
+                              port='3306',
+                              user='root',
+                              password='8CgNkES97Zu19eix077O7t5qgDrMkXj@',
+                              database='example',
+                              use_pure=True)
 
     return g.db
 
@@ -30,13 +33,36 @@ def close_db(e=None):
         db.close()
 
 
+def execute_sql_from_file(cnx, f):
+    """Executing SQL Statements from a Text File."""
+    cur = cnx.cursor(buffered=True)
+    lines = f.read().decode('utf-8').split('\n')
+    statement = ""
+
+    for line in lines:
+        if re.match(r'--', line) or line == '\n': # ignore sql comment lines
+            continue
+        if not re.search(r';$', line): # keep appending lines that don't end in ';'
+            statement += line
+        else:
+            statement += line
+            try:
+                cur.execute(statement)
+            except Exception as e:
+                print("Error during execute statement.\n{0}".format(str(e.args)))
+                break
+            statement = ""
+
+        cnx.commit()
+    return
+
+
 def init_db():
     """Clear existing data and create new tables."""
-    db = get_db()
+    cnx = get_db()
 
     with current_app.open_resource("schema.sql") as f:
-        db.executescript(f.read().decode("utf8"))
-
+        execute_sql_from_file(cnx, f)
 
 @click.command("init-db")
 @with_appcontext

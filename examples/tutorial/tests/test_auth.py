@@ -10,13 +10,17 @@ def test_register(client, app):
     assert client.get("/auth/register").status_code == 200
 
     # test that successful registration redirects to the login page
-    response = client.post("/auth/register", data={"username": "a", "password": "a"})
+    test_user = {"username": "a", "password": "a"}
+    response = client.post("/auth/register", data=test_user)
     assert "http://localhost/auth/login" == response.headers["Location"]
 
     # test that the user was inserted into the database
     with app.app_context():
+        cnx = get_db()
+        cur = cnx.cursor(buffered=True)
+        cur.execute("select * from user where username = 'a'")
         assert (
-            get_db().execute("select * from user where username = 'a'").fetchone()
+            cur.fetchone()
             is not None
         )
 
@@ -54,7 +58,8 @@ def test_login(client, auth):
 
 @pytest.mark.parametrize(
     ("username", "password", "message"),
-    (("a", "test", b"Incorrect username."), ("test", "a", b"Incorrect password.")),
+    (("a", "test", b"Incorrect username."),
+     ("test", "a", b"Incorrect password.")),
 )
 def test_login_validate_input(auth, username, password, message):
     response = auth.login(username, password)

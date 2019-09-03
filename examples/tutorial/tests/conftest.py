@@ -4,12 +4,8 @@ import tempfile
 import pytest
 
 from flaskr import create_app
-from flaskr.db import get_db
+from flaskr.db import get_db, execute_from_sql_file
 from flaskr.db import init_db
-
-# read in SQL for populating test data
-with open(os.path.join(os.path.dirname(__file__), "data.sql"), "rb") as f:
-    _data_sql = f.read().decode("utf8")
 
 
 @pytest.fixture
@@ -21,9 +17,11 @@ def app():
     app = create_app({"TESTING": True, "DATABASE": db_path})
 
     # create the database and load test data
-    with app.app_context():
-        init_db()
-        get_db().executescript(_data_sql)
+    with open(os.path.join(os.path.dirname(__file__), "data.sql"), "rb") as f:
+        with app.app_context():
+            init_db()
+            cnx = get_db()
+            execute_from_sql_file(cnx, f)
 
     yield app
 

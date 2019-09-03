@@ -1,4 +1,4 @@
-import sqlite3
+import mysql.connector as mysql
 
 import pytest
 
@@ -7,13 +7,15 @@ from flaskr.db import get_db
 
 def test_get_close_db(app):
     with app.app_context():
-        db = get_db()
-        assert db is get_db()
+        cnx = get_db()
+        assert cnx is get_db()
 
-    with pytest.raises(sqlite3.ProgrammingError) as e:
-        db.execute("SELECT 1")
+    with pytest.raises(mysql.errors.OperationalError) as e:
+        cur = cnx.cursor(buffered=True)
+        cur.execute("SELECT 1")
+        cnx.close()
 
-    assert "closed" in str(e.value)
+    assert "MySQL Connection not available." in str(e.value)
 
 
 def test_init_db_command(runner, monkeypatch):
