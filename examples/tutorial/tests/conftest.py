@@ -4,7 +4,7 @@ import tempfile
 import pytest
 
 from flaskr import create_app
-from flaskr.db import get_db, execute_from_sql_file
+from flaskr.db import get_db, execute_sql_from_file
 from flaskr.db import init_db
 
 
@@ -21,7 +21,7 @@ def app():
         with app.app_context():
             init_db()
             cnx = get_db()
-            execute_from_sql_file(cnx, f)
+            execute_sql_from_file(cnx, f)
 
     yield app
 
