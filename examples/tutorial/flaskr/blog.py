@@ -6,6 +6,7 @@ from flask import render_template
 from flask import request
 from flask import url_for
 from werkzeug.exceptions import abort
+from memory_profiler import profile
 
 from flaskr.auth import login_required
 from flaskr.db import get_db
@@ -14,6 +15,7 @@ bp = Blueprint("blog", __name__)
 
 
 @bp.route("/")
+@profile(precision=4)
 def index():
     """Show all the posts, most recent first."""
     cur = get_db().cursor(buffered=True)
@@ -35,6 +37,7 @@ def index():
     return render_template("blog/index.html", posts=posts)
 
 
+@profile(precision=4)
 def get_post(id, check_author=True):
     """Get a post and its author by id.
 
@@ -71,6 +74,7 @@ def get_post(id, check_author=True):
 
 @bp.route("/create", methods=("GET", "POST"))
 @login_required
+@profile(precision=4)
 def create():
     """Create a new post for the current user."""
     if request.method == "POST":
@@ -98,6 +102,7 @@ def create():
 
 @bp.route("/<int:id>/update", methods=("GET", "POST"))
 @login_required
+@profile(precision=4)
 def update(id):
     """Update a post if the current user is the author."""
     post = get_post(id)

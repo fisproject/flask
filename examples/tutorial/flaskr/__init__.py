@@ -1,6 +1,9 @@
 import os
 
 from flask import Flask
+#from werkzeug.middleware.profiler import ProfilerMiddleware
+from pyinstrument import Profiler
+from flask import g, make_response, request
 
 
 def create_app(test_config=None):
@@ -46,5 +49,25 @@ def create_app(test_config=None):
     # app.route, while giving the blog blueprint a url_prefix, but for
     # the tutorial the blog will be the main index
     app.add_url_rule("/", endpoint="index")
+
+    @app.before_request
+    def before_request():
+        if "profile" in request.args:
+            g.profiler = Profiler()
+            g.profiler.start()
+
+    @app.after_request
+    def after_request(response):
+        if not hasattr(g, "profiler"):
+            return response
+        g.profiler.stop()
+        output_html = g.profiler.output_html()
+        return make_response(output_html)
+
+    # app.config['PROFILE'] = True
+    # app.wsgi_app = ProfilerMiddleware(app.wsgi_app,
+    #                                   profile_dir=".",
+    #                                   sort_by=['tottime'],
+    #                                   restrictions=[10])
 
     return app
